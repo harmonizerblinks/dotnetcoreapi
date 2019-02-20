@@ -1,10 +1,10 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using TransferSystemApi.Repository;
-using TransferSystemApi.Models;
+using TemplateApi.Repository;
+using TemplateApi.Models;
 
-namespace TransferSystemApi.Controllers
+namespace TemplateApi.Controllers
 {
     [Produces("application/json")]
     [Route("[controller]")]

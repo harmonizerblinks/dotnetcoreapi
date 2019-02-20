@@ -11,7 +11,6 @@ namespace TemplateApi.Models
         public string Id { get; set; }
         [Required]
         public string Fullname { get; set; }
-        [Required]
         public string Image { get; set; }
         [Required]
         [DataType(DataType.EmailAddress)]

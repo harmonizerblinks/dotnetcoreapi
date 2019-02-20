@@ -17,10 +17,5 @@ namespace TemplateApi.Models
         public string Message { get; set; }
         public int Code { get; set; }
         public string Response { get; set; }
-        public int? AccountId { get; set; }
-        public int? CustomerId { get; set; }
-
-        public Account Account { get; set; }
-        public Customer Customer { get; set; }
     }
 }

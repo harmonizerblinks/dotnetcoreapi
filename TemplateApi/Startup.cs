@@ -80,7 +80,7 @@ namespace TemplateApi
                     cfg.SaveToken = true;
                     cfg.TokenValidationParameters = new TokenValidationParameters()
                     {
-                        ValidIssuer = "http://loan.acyst.tech",
+                        ValidIssuer = "http://auth.acyst.tech",
                         ValidAudience = "http://localhost:53720",
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("wertyuiopasdfghjklzxcvbnm123456")),
                     };
@@ -134,10 +134,10 @@ namespace TemplateApi
 
             services.AddMvc(o =>
             {
-                //var policy = new AuthorizationPolicyBuilder()
-                //    .RequireAuthenticatedUser()
-                //    .Build();
-                //o.Filters.Add(new AuthorizeFilter(policy));
+                var policy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+                o.Filters.Add(new AuthorizeFilter(policy));
             }).AddJsonOptions(options =>
             {
                 options.SerializerSettings.ContractResolver = new LowercaseContractResolver();
@@ -145,30 +145,14 @@ namespace TemplateApi
             }).AddXmlDataContractSerializerFormatters().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.AddTransient<IAppUserRepository, AppUserRepository>();
-            services.AddTransient<ICompanyRepository, CompanyRepository>();
-            services.AddTransient<IEmployeeRepository, EmployeeRepository>();
-            services.AddTransient<IAccountRepository, AccountRepository>();
-            services.AddTransient<IAccountTypeRepository, AccountTypeRepository>();
-            services.AddTransient<ICotRepository, CotRepository>();
-            services.AddTransient<IChargeRepository, ChargeRepository>();
-            services.AddTransient<IChequeRepository, ChequeRepository>();
-            services.AddTransient<ILocationRepository, LocationRepository>();
-            services.AddTransient<INominalRepository, NominalRepository>();
-            services.AddTransient<ISessionRepository, SessionRepository>();
-            services.AddTransient<ICustomerRepository, CustomerRepository>();
             services.AddTransient<ISequenceRepository, SequenceRepository>();
             services.AddTransient<ISmsApiRepository, SmsApiRepository>();
             services.AddTransient<ISmsRepository, SmsRepository>();
-            services.AddTransient<IAlertRepository, AlertRepository>();
-            services.AddTransient<ITellerRepository, TellerRepository>();
-            services.AddTransient<ITransitRepository, TransitRepository>();
-            services.AddTransient<ITransactionRepository, TransactionRepository>();
 
             services.AddTransient<IEmailSender, EmailSender>();
-            //services.AddTransient<IMyServices, MyServices>();
-            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
-            //services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            
         }
         
         public class LowercaseContractResolver : DefaultContractResolver
@@ -204,12 +188,12 @@ namespace TemplateApi
                 Path.Combine(Directory.GetCurrentDirectory(), "Files")),
                 RequestPath = "/Files"
             });
-            // app.UseSerilog();
+
             app.UseStatusCodePages();
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dedawa Api");
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth Api");
             });
 
             app.UseHttpsRedirection();

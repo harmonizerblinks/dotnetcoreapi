@@ -6,8 +6,5 @@ namespace TemplateApi.Repository
 {
     public interface ISmsRepository : IGenericRepository<Sms>
     {
-        IQueryable<Sms> GetAll();
-        IQueryable<SmsBoardcast> GetBroadcast();
-        Task<SmsBoardcast> InsertBroadcast(SmsBoardcast sms);
     }
 }

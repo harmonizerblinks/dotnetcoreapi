@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace TransferSystemApi.Models
+namespace TemplateApi.Models
 {
     public class Sequence
     {
