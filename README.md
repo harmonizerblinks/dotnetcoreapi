@@ -1,3 +1,3 @@
 # dotnetcoreapi
 
-A Dot Net Core Api With Authentication ready for use, All you Need to do is Change connection string
+A Dot Net Core Api With Authentication ready for use, All you Need to do is Change connection string in a appsettings.json
