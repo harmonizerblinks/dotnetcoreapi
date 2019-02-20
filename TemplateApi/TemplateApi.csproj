@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Files\" />
+    <Folder Include="Files\Documents\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

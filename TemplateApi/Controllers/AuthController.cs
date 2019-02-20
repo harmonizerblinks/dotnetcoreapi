@@ -30,19 +30,16 @@ namespace TemplateApi.Controllers
         private readonly IConfiguration _configuration;
         private readonly IEmailSender _emailSender;
 
-        private readonly ICompanyRepository _companyRepository;
-        private readonly IEmployeeRepository _employeeRepository;
+        private readonly IAppUserRepository _appuserRepository;
 
         public AuthController(UserManager<AppUser> usrMgr, SignInManager<AppUser> signinMgr, IConfiguration configuration,
-             /*HttpContext context,*/ IEmailSender emailSender, ICompanyRepository companyRepository, IEmployeeRepository employeeRepository)
+             /*HttpContext context,*/ IEmailSender emailSender, IAppUserRepository appuserRepository)
         {
             _userManager = usrMgr;
             _signInManager = signinMgr;
             _configuration = configuration;
-            //_context = context;
             _emailSender = emailSender;
-            _companyRepository = companyRepository;
-            _employeeRepository = employeeRepository;
+            _appuserRepository = appuserRepository;
         }
 
         [HttpPost()]
@@ -70,21 +67,9 @@ namespace TemplateApi.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("wertyuiopasdfghjklzxcvbnm123456"));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             
-            var com = _companyRepository.Query().LastOrDefault();
-            var name = "Acyst Tech"; var image = "logo.png"; var company = "Acyst Technology Company";
-            if (user.EmployeeId != null)
-            {
-                var emp = _employeeRepository.Query().FirstOrDefault(e => e.EmployeeId == user.EmployeeId);
-                if (emp != null) name = emp.FullName; image = emp.Image;
-            }
-            if (com != null) company = com.Name;
-
             userClaims.Add(new Claim("Id", user.Id));
-            userClaims.Add(new Claim("FullName", name));
-            userClaims.Add(new Claim("Company", company));
-            userClaims.Add(new Claim("SessionDate", com.SessionDate.Date.ToString()));
-            userClaims.Add(new Claim("Expiry", com.Expiry.ToString()));
-            userClaims.Add(new Claim("Image", image));
+            userClaims.Add(new Claim("FullName", user.FullName));
+            userClaims.Add(new Claim("Image", user.Image));
             userClaims.Add(new Claim("Mobile", user.PhoneNumber));
             userClaims.Add(new Claim("Email", user.Email));
             userClaims.Add(new Claim("UserType", user.UserType));
@@ -106,48 +91,43 @@ namespace TemplateApi.Controllers
             
             //await _signInManager.CanSignInAsync(user);
 
-            return Ok(new { Access_Token = auth, Expires_In_Hours = 12, Date = com.SessionDate.Date });
+            return Ok(new { Access_Token = auth, Expires_In_Hours = 12, DateTime.UtcNow.Date });
         }
 
         [HttpPost("User")]
         public async Task<IActionResult> AddUser([FromBody] AddUser user)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-            var appemail = _userManager.Users.Any(u => u.Email.Equals(user.Email));
-            if (appemail) return BadRequest("Email already taken");
-
-            var emp = _employeeRepository.Query().Where(e => e.EmployeeId.Equals(user.EmployeeId)).FirstOrDefault();
-            if (emp == null) return BadRequest("Select a valid Employee");
-
-            var app = _userManager.Users.Any(u => u.EmployeeId.Equals(user.EmployeeId));
-            if (app) return BadRequest("Employee Already has a Valid Account");
-
+            var appemail = _userManager.Users.Any(u => u.Email.Equals(user.Email) || u.UserName.Equals(user.Username));
+            if (appemail) return BadRequest("Email Or Username already taken ");
+            
             var appUser = new AppUser
             {
-                Email = emp.Email, PhoneNumber = emp.Mobile, UserName = user.Username, MUserId = user.UserId,
+                Email = user.Email, PhoneNumber = user.Mobile, UserName = user.Username,
+                MUserId = user.UserId, FullName = user.Fullname, Image = user.Image,
                 Login = DateTime.Now, LogOut = DateTime.Now, IsLoggedIn = false, UserType = user.UserType,
-                EmailConfirmed = true, EmployeeId = user.EmployeeId, MDate = DateTime.UtcNow
+                EmailConfirmed = true, MDate = DateTime.UtcNow
             };
             var result = await _userManager.CreateAsync(appUser, user.Password);
 
             if (!result.Succeeded) return BadRequest($"Message: {result} ");
 
-            //var code = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
-            //var callbackUrl = Url.EmailConfirmationLink(appUser.Id, code, Request.Scheme);
-            //await _emailSender.SendEmailConfirmationAsync(user.Email, callbackUrl, appUser);
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
+            var callbackUrl = Url.EmailConfirmationLink(appUser.Id, code, Request.Scheme);
+            await _emailSender.SendEmailConfirmationAsync(user.Email, callbackUrl, appUser);
 
             return Ok(user);
         }
         
-        [HttpGet("User")]
+        [HttpGet("Users")]
         public async Task<IActionResult> GetUser()
         {
             var users = await _userManager.Users.Select(
                     u => new AddUser()
                     {
                         Id = u.Id, Email = u.Email, Mobile = u.PhoneNumber, Username = u.UserName,
-                        Fullname = u.Employee.FullName, Login = u.Login, LogOut = u.LogOut,
-                        EmployeeId = u.EmployeeId, UserType = u.UserType,
+                        Fullname = u.FullName, Login = u.Login, LogOut = u.LogOut,
+                        Image = u.Image, UserType = u.UserType,
                         MUserId = u.MUserId, MDate = u.MDate, IsLoggedIn = u.IsLoggedIn
                     }).OrderByDescending(o => o.Login).ToListAsync();
             //RecurringJob.AddOrUpdate("Adding Services",() => Console.WriteLine("Transparent!"), Cron.Hourly);
@@ -168,12 +148,10 @@ namespace TemplateApi.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             var appuser = _userManager.Users.FirstOrDefault(u => u.Id == id);
             if (appuser == null) return NotFound($"User Doesn't Exist with id {id} in Database ");
-
-            var emp = _employeeRepository.Query().Where(e => e.EmployeeId.Equals(user.EmployeeId)).FirstOrDefault();
-            if (emp == null) return BadRequest("Select a valid Employee");
-
-            appuser.Email = emp.Email; appuser.PhoneNumber = emp.Mobile; appuser.UserName = user.Username;
-            appuser.UserType = user.UserType; appuser.EmployeeId = user.EmployeeId;
+            
+            appuser.Email = user.Email; appuser.PhoneNumber = user.Mobile;
+            appuser.UserName = user.Username; appuser.Image = user.Image;
+            appuser.UserType = user.UserType; appuser.FullName = user.Fullname;
             appuser.MUserId = user.MUserId; appuser.MDate = DateTime.UtcNow;
 
             var result = await _userManager.UpdateAsync(appuser);
@@ -194,15 +172,8 @@ namespace TemplateApi.Controllers
 
             return Ok(user);
         }
-
-        [HttpGet()]
-        public ActionResult Claims()
-        {
-            var claims = User.Claims.ToArray();
-
-            return Ok(new { message = "Active Claims", claims });
-        }
         
+
         [HttpGet("Logout/{username}")]
         public async Task<IActionResult> Logout([FromRoute]string username)
         {
@@ -220,7 +191,7 @@ namespace TemplateApi.Controllers
             return Ok("Logout successfull");
         }
 
-        [HttpPost("Change")]
+        [HttpPost("ChangePassword")]
         public async Task<IActionResult> PasswordChange([FromBody] ChangePassword model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -228,7 +199,6 @@ namespace TemplateApi.Controllers
             if (appuser == null) return NotFound("User does not exist");
             var resul = await _signInManager.CheckPasswordSignInAsync(appuser, model.OldPassword, true);
             if (!resul.Succeeded) return BadRequest("Current Password is incorrect");
-            //if (model.OldPassword != user.Password) return BadRequest("Current Password is incorrect.");
 
             IdentityResult result = await _userManager.ChangePasswordAsync(appuser, model.OldPassword, model.NewPassword);
             if (result.Succeeded)
@@ -241,43 +211,7 @@ namespace TemplateApi.Controllers
                 return Content("Could not change Password");
             }
         }
-
-        [HttpGet("Disable/{id}")]
-        public async Task<IActionResult> PassWordResetById([FromBody] string id)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            var appmail = _userManager.Users.Any(u => u.Id.Equals(id));
-            if (appmail) return NotFound($"There is no valid Account with {id}");
-
-            var appuser = await _userManager.FindByEmailAsync(id);
-            appuser.EmailConfirmed = false;
-
-            try
-            {
-                await _userManager.UpdateNormalizedEmailAsync(appuser);
-                await _userManager.UpdateNormalizedUserNameAsync(appuser);
-                await _userManager.UpdateSecurityStampAsync(appuser);
-                await _userManager.UpdateAsync(appuser);
-                //await _context.SaveChangesAsync();
-
-                //var code = await _userManager.GenerateEmailConfirmationTokenAsync(appuser);
-                //var callbackUrl = Url.EmailConfirmationLink(appuser.Id, code, Request.Scheme);
-                //await _emailSender.SendEmailResetConfirmationAsync(appuser.Email, callbackUrl, appuser);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UsersExists(appuser.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return Ok(new { Status = "Ok", Message = "Account Disabled Successfully" });
-        }
-
+        
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteById([FromBody] string id)
         {
@@ -356,8 +290,7 @@ namespace TemplateApi.Controllers
             if (!appmail) return NotFound($"There is no valid Account with {email}");
             var appuser = await _userManager.FindByEmailAsync(email);
             var pin = DateTime.Now.ToString("ddhms"); appuser.EmailConfirmed = true;
-            appuser.Employee = _employeeRepository.Query().Where(e=>e.EmployeeId == appuser.EmployeeId).FirstOrDefault();
-            if (appuser.Employee.FullName == null) appuser.Employee.FullName = appuser.UserName;
+            
             try
             {
                 await _userManager.RemovePasswordAsync(appuser);
