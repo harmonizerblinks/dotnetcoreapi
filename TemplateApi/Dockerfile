@@ -7,16 +7,16 @@ EXPOSE 80
 
 FROM microsoft/dotnet:2.1-sdk-nanoserver-1803 AS build
 WORKDIR /src
-COPY ["LoanApi/LoanApi.csproj", "LoanApi/"]
-RUN dotnet restore "LoanApi/LoanApi.csproj"
+COPY ["TemplateApi/TemplateApi.csproj", "TemplateApi/"]
+RUN dotnet restore "TemplateApi/TemplateApi.csproj"
 COPY . .
-WORKDIR "/src/LoanApi"
-RUN dotnet build "LoanApi.csproj" -c Release -o /app
+WORKDIR "/src/TemplateApi"
+RUN dotnet build "TemplateApi.csproj" -c Release -o /app
 
 FROM build AS publish
-RUN dotnet publish "LoanApi.csproj" -c Release -o /app
+RUN dotnet publish "TemplateApi.csproj" -c Release -o /app
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app .
-ENTRYPOINT ["dotnet", "LoanApi.dll"]
+ENTRYPOINT ["dotnet", "TemplateApi.dll"]
